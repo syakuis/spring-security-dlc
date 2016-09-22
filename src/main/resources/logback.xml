@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="30 seconds">
+
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<layout class="ch.qos.logback.classic.PatternLayout">
+			<pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+		</layout>
+	</appender>
+
+	<logger name="org.springframework" level="info" />
+	<logger name="org.springframework.security" level="debug" />
+
+	<logger name="org.syaku.apps" level="debug" />
+
+	<root level="debug">
+		<appender-ref ref="STDOUT" />
+	</root>
+
+</configuration>

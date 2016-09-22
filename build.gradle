@@ -1,0 +1,66 @@
+buildscript {
+    repositories {
+        maven { url 'http://repo.spring.io/plugins-release' }
+    }
+    dependencies {
+        classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7'
+    }
+}
+
+group 'org.syaku.apps'
+version '1.0.0'
+
+apply plugin: 'java'
+apply plugin: 'war'
+apply plugin: 'propdeps'
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    slf4jVersion = '1.7.12'
+    junitVersion = '4.11'
+
+    springVersion = '4.2.4.RELEASE'
+    springSecurityVersion = '4.1.0.RELEASE'
+
+    aspectjVersion = '1.8.8'
+    jacksonVersion = '2.1.0'
+}
+
+dependencies {
+    compile "org.slf4j:jcl-over-slf4j:${slf4jVersion}"
+    runtime("ch.qos.logback:logback-classic:1.1.7") {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+
+    testCompile "junit:junit:${junitVersion}"
+
+    testCompile "org.springframework:spring-test:${springVersion}"
+
+    compile "org.apache.commons:commons-lang3:3.4"
+
+    compile "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}",
+            "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}",
+            "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+
+    compile "org.aspectj:aspectjweaver:${aspectjVersion}"
+
+    compile "org.springframework:spring-webmvc:${springVersion}"
+
+    compile "org.springframework.security:spring-security-web:${springSecurityVersion}",
+            "org.springframework.security:spring-security-config:${springSecurityVersion}",
+            "org.springframework.security:spring-security-taglibs:${springSecurityVersion}"
+
+    provided "javax.servlet:javax.servlet-api:3.0.1",
+             "javax.servlet.jsp:jsp-api:2.1",
+             "javax.el:javax.el-api:2.2.4"
+
+    compile("javax.servlet:jstl:1.2") {
+        exclude group: 'javax.servlet', module: 'servlet-api'
+    }
+}
