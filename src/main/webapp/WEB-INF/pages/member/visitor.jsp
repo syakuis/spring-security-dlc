@@ -56,7 +56,6 @@
 <script type="application/javascript">
   $("[data-session-id]").click(function() {
     var sessionId = $(this).data('session-id');
-    console.log(sessionId);
 
     $.ajax({
       url : '<c:url value="/member/visitor" />',

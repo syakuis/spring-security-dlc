@@ -21,14 +21,14 @@ import java.io.PrintWriter;
 public class UnauthorizedAccessHandler implements AuthenticationEntryPoint {
 
 	private final String loginFormUrl;
-	private boolean chain = true;
+	private boolean redirect = true;
 
 	public UnauthorizedAccessHandler(String loginFormUrl) {
 		this.loginFormUrl = loginFormUrl;
 	}
 
-	public void setChain(boolean chain) {
-		this.chain = chain;
+	public void setRedirect(boolean redirect) {
+		this.redirect = redirect;
 	}
 
 	@Override
@@ -49,11 +49,10 @@ public class UnauthorizedAccessHandler implements AuthenticationEntryPoint {
 			out.flush();
 			out.close();
 		} else {
-			chain= false;
-			if (chain) {
-				request.getRequestDispatcher(request.getContextPath() + loginFormUrl).forward(request, response);
-			} else {
+			if (redirect) {
 				response.sendRedirect(request.getContextPath() + loginFormUrl);
+			} else {
+				request.getRequestDispatcher(request.getContextPath() + loginFormUrl).forward(request, response);
 			}
 		}
 	}

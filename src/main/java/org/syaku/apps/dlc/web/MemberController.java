@@ -1,20 +1,22 @@
 package org.syaku.apps.dlc.web;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.session.SessionInformation;
 import org.springframework.security.core.session.SessionRegistry;
-import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.*;
+import org.syaku.spring.http.StatusCode;
+import org.syaku.spring.http.SuccessBody;
+import org.syaku.spring.security.session.SessionInformationSupport;
 
 import javax.servlet.http.HttpSession;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,6 +31,14 @@ public class MemberController {
 	@Autowired
 	private SessionRegistry sessionRegistry;
 
+	@Autowired
+	private UserDetailsService userDetailsService;
+
+	@Value("#{config.usernameParameter}")
+	String usernameParameter;
+	@Value("#{config.passwordParameter}")
+	String passwordParameter;
+
 	@RequestMapping(value = "/login", method = RequestMethod.GET)
 	public String dispMemberLogin() {
 		return "member/login";
@@ -41,36 +51,10 @@ public class MemberController {
 		return "member/mypage";
 	}
 
-	@RequestMapping(value = "/decision", method = RequestMethod.POST)
-	public String dispMemberDecision(Model model, @RequestBody Map< String, Object> data) {
-		System.out.println(data.toString());
-		return "member/decision";
-	}
-
 	@RequestMapping(value = "/visitor", method = RequestMethod.GET)
 	public String dispMemberVisitor(Model model) {
-		List<SessionInformation> activeSessions = new ArrayList<>();
-		for(Object principal : sessionRegistry.getAllPrincipals()) {
-			activeSessions.addAll(sessionRegistry.getAllSessions(principal, false));
-		}
-
-		List<Map<String, Object>> visitors = new ArrayList<>();
-		for(SessionInformation sessionInformation : activeSessions) {
-			Map<String, Object> data = new HashMap<>();
-
-			data.put("lastRequest", sessionInformation.getLastRequest());
-			data.put("sessionId", sessionInformation.getSessionId());
-
-			Object principalObj = sessionInformation.getPrincipal();
-			if (principalObj instanceof User) {
-				User user = (User) principalObj;
-				data.put("username", user.getUsername());
-			}
-
-			visitors.add(data);
-		}
-
-		model.addAttribute("visitors", visitors);
+		SessionInformationSupport sessionInformationSupport = new SessionInformationSupport(sessionRegistry);
+		model.addAttribute("visitors", sessionInformationSupport.getSessionInformations());
 
 		return "member/visitor";
 	}
@@ -83,5 +67,40 @@ public class MemberController {
 		}
 
 		return new HashMap<>();
+	}
+
+	@RequestMapping(value = "/login/duplication", method = RequestMethod.POST)
+	public @ResponseBody SuccessBody procMemberLoginDuplication(@RequestBody MultiValueMap<String, String> params) {
+
+		String username = params.getFirst(usernameParameter);
+		String password = params.getFirst(passwordParameter);
+
+		SuccessBody body = new SuccessBody();
+		body.setStatusCode(StatusCode.DuplicationLogin);
+
+		try {
+			UserDetails details = userDetailsService.loadUserByUsername(username);
+
+			if (details != null) {
+				// 사용자 정보 일치여부
+				if (details.getPassword().equals(password)) {
+
+					// 이미 로그인 사용자 여부
+					SessionInformationSupport sessionInformationSupport = new SessionInformationSupport(sessionRegistry);
+					if (sessionInformationSupport.userExists(username)) {
+						body.setError(true);
+					}
+				}
+			}
+		} catch (UsernameNotFoundException e) {
+			// 없는 경우 로그인 처리.
+		}
+
+		return body;
+	}
+
+	@RequestMapping(value = "/error/{id}", method = RequestMethod.GET)
+	public String dispMemberMypage(@PathVariable("id") String error) {
+		return "error/" + error;
 	}
 }

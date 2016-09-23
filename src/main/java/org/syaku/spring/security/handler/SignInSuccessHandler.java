@@ -24,10 +24,10 @@ import java.util.Map;
  */
 public class SignInSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
 
-	private boolean chain = true;
+	private boolean redirect = true;
 
-	public void setChain(boolean chain) {
-		this.chain = chain;
+	public void setRedirect(boolean redirect) {
+		this.redirect = redirect;
 	}
 
 	private String redirectUrl(HttpServletRequest request, HttpServletResponse response) {
@@ -52,26 +52,20 @@ public class SignInSuccessHandler extends SavedRequestAwareAuthenticationSuccess
 	@Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 
+		response.setStatus(HttpServletResponse.SC_OK);
+
 		if(RequestSnack.isAjax(request)) {
 			String redirectUrl = redirectUrl(request, response);
 
-			if (logger.isDebugEnabled()) {
-				logger.debug("redirectUrl: " + redirectUrl);
-				logger.debug("targetUrlParameter name: " + getTargetUrlParameter());
-				logger.debug("targetUrlParameter value: " + request.getParameter(getTargetUrlParameter()));
-			}
-
 			response.setContentType("application/json");
 			response.setCharacterEncoding("utf-8");
-			response.setStatus(HttpServletResponse.SC_OK);
 
 			SuccessBody success = new SuccessBody();
 
 			success.setError(false);
-			success.setMessage(null);
 
 			Map<String, Object> data = new HashMap<>();
-			data.put("chain", chain);
+			data.put("redirect", redirect);
 			data.put("redirectUrl", redirectUrl);
 			success.setData(data);
 

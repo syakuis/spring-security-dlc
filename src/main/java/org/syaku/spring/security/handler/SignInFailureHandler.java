@@ -4,9 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.syaku.snack.RequestSnack;
-import org.syaku.spring.http.StatusCode;
 import org.syaku.spring.http.SuccessBody;
-import org.syaku.spring.security.exception.ConcurrentSessionException;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -23,21 +21,18 @@ import java.io.PrintWriter;
  * @ConcurrentSessionException 중복록인을 요청한 경우
  */
 public class SignInFailureHandler extends SimpleUrlAuthenticationFailureHandler {
-	private boolean chain = true;
+	private boolean redirect = true;
+	private String defaultFailureUrl;
 
 	public SignInFailureHandler() {}
 
 	public SignInFailureHandler(String defaultFailureUrl) {
 		super(defaultFailureUrl);
+		this.defaultFailureUrl = defaultFailureUrl;
 	}
 
-	/**
-	 * ajax 방식이 아닌 경우 페이지 요청 방식
-	 *
-	 * @param chain
-	 */
-	public void setChain(boolean chain) {
-		this.chain = chain;
+	public void setRedirect(boolean redirect) {
+		this.redirect = redirect;
 	}
 
 	@Override
@@ -59,7 +54,11 @@ public class SignInFailureHandler extends SimpleUrlAuthenticationFailureHandler 
 			out.flush();
 			out.close();
 		} else {
-			super.onAuthenticationFailure(request, response, exception);
+			if (redirect) {
+				super.onAuthenticationFailure(request, response, exception);
+			} else {
+				request.getRequestDispatcher(request.getContextPath() + defaultFailureUrl).forward(request, response);
+			}
 		}
 	}
 }

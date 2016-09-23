@@ -24,24 +24,29 @@ public class AccessFailureHandler implements AccessDeniedHandler {
 	private final String loginFormUrl;
 	private final String errorPage;
 	private String redirectUrlParameter = "redirect_url";
-	private boolean chain = true;
+	private boolean redirect = true;
 
 	public AccessFailureHandler(String loginFormUrl, String errorPage) {
 		this.loginFormUrl = loginFormUrl;
 		this.errorPage = errorPage;
 	}
 
-	public void setChain(boolean chain) {
-		this.chain = chain;
+	public void setRedirect(boolean redirect) {
+		this.redirect = redirect;
 	}
 
+	/**
+	 * 이동할 url 값을 담을 약속된 파라메터
+	 *
+	 * @param redirectUrlParameter the redirect url parameter
+	 */
 	public void setRedirectUrlParameter(String redirectUrlParameter) {
 		this.redirectUrlParameter = redirectUrlParameter;
 	}
 
 	@Override
 	public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException exception) throws IOException, ServletException {
-		String url = RequestSnack.getPathQueryString(request);
+		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
 		if(RequestSnack.isAjax(request)) {
 			response.setContentType("application/json");
@@ -57,16 +62,13 @@ public class AccessFailureHandler implements AccessDeniedHandler {
 			out.flush();
 			out.close();
 		} else {
-
-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
-			if (chain) {
-				request.setAttribute("message", exception.getMessage());
+			if (redirect) {
+				response.sendRedirect(request.getContextPath() + errorPage);
+			} else {
+				String url = RequestSnack.getPathQueryString(request);
 				request.setAttribute(redirectUrlParameter, url);
 				request.setAttribute("loginFormUrl", loginFormUrl);
 				request.getRequestDispatcher(request.getContextPath() + errorPage).forward(request, response);
-			} else {
-				response.sendRedirect(request.getContextPath() + errorPage);
 			}
 		}
 	}

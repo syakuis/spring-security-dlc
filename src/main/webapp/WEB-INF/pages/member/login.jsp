@@ -72,8 +72,8 @@
               <input type="checkbox" name="remember_me"> Remember me
             </label>
           </div>
-          <button class="btn btn-lg btn-primary btn-block" type="submit">일반 로그인</button>
-          <button class="btn btn-lg btn-primary btn-block" type="button" onclick="ajax();">Ajax 로그인</button>
+          <button class="btn btn-lg btn-primary btn-block" type="button" onclick="duplication(true);">일반 로그인</button>
+          <button class="btn btn-lg btn-primary btn-block" type="button" onclick="duplication(false);">Ajax 로그인</button>
         </form>
       </div>
 
@@ -84,6 +84,34 @@
 </div>
 
 <script type="text/javascript">
+
+  function duplication(submit) {
+
+    $.ajax({
+      url : '<c:url value="/member/login/duplication" />',
+      data: $('#login input').serialize(),
+      type: 'POST',
+      dataType : 'json',
+      beforeSend: function(xhr) {
+        xhr.setRequestHeader("Accept", "application/json");
+      }
+    }).done(function(responseData) {
+      var error = responseData.error;
+
+      if (error === true) {
+        if (!confirm("이미 로그인 사용자가 있습니다. 중복로그인 하시겠습니까?")) {
+          return;
+        }
+      }
+
+      if (submit) {
+        $('#login').submit();
+      } else {
+        ajax();
+      }
+
+    });
+  }
 
   function ajax() {
     $.ajax({
@@ -100,18 +128,10 @@
       var code = responseData.code;
 
       if (error) {
-
-        if (code === 403) {
-          if (confirm("이미 로그인 사용자가 있습니다. 중복로그인 하시겠습니까?")) {
-            $('#decision').val(true);
-            $('#login').submit();
-          }
-        } else {
-          $('#message div').text(responseData.message);
-          $('#message').show(0, function() {
-            $(this).delay(1000).hide(0);
-          });
-        }
+        $('#message div').text(responseData.message);
+        $('#message').show(0, function() {
+          $(this).delay(1000).hide(0);
+        });
       } else {
         var redirectUrl = responseData.data.redirectUrl;
         var chain = responseData.data.chain;

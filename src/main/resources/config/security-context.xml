@@ -5,28 +5,43 @@
 		 xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 						http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
+	<!-- globals configuration information -->
 	<util:map id="config" key-type="java.lang.String" value-type="java.lang.Object">
-		<!-- authenticationEntryPoint 의 체인(포워드) 방식의 화면 요청 여부 -->
-		<b:entry key="chain" value="true"/>
-		<b:entry key="loginFormUrl" value="/member/login"/>
-		<b:entry key="errorPage" value="/404"/>
+		<!-- 로그인 페이지를 포워드할지 리다이렉트할지 설정한다. -->
+		<b:entry key="redirect" value="false" />
 
-		<!-- 로그인 후 페이지이동 방식 설정 -->
-		<b:entry key="alwaysUseDefaultTargetUrl" value="false"/>
-		<b:entry key="defaultTargetUrl" value="/member/mypage"/>
+		<b:entry key="loginFormUrl" value="/member/login"/>
+
+		<!-- 접근 권한 오류페이지 -->
+		<b:entry key="accessDeniedUrl" value="/member/error/accessDenied"/>
+		<b:entry key="accessDeniedRedirect" value="false"/>
 
 		<b:entry key="usernameParameter" value="user_id"/>
 		<b:entry key="passwordParameter" value="password"/>
 		<b:entry key="loginProcessingUrl" value="/member/signin"/>
+
+		<!-- 로그인 실패 오류 페이지 -->
+		<b:entry key="loginFailureUrl" value="/member/error/loginFailure"/>
+
+		<!-- 로그인 후 페이지 이동 설정 -->
+		<b:entry key="alwaysUseDefaultTargetUrl" value="false"/>
+		<b:entry key="defaultTargetUrl" value="/member/mypage"/>
 
 		<b:entry key="logoutSuccessUrl" value="/member/login"/>
 		<b:entry key="logoutProcessingUrl" value="/member/signout"/>
 		<b:entry key="cookiesToClear" value="JSESSIONID"/>
 
 		<!-- 세션이 만료되었을때 이동할 페이지 -->
-		<b:entry key="expiredUrl" value="/404"/>
+		<b:entry key="sessionExpiredUrl" value="/member/error/duplicationLogin"/>
 
 		<!-- 중복로그인 설정 -->
+
+		<!--
+		중복로그인 사용여부
+		사용할 경우 maximumSessions = 1, exceptionIfMaximumExceeded = false 설정으로 셋팅됩니다.
+		-->
+		<b:entry key="duplicationLoginEnable" value="true" />
+
 		<!--
 		세션을 생성할 수 있는 수 -1 무제한으로 생성할 수 있으며 1로 설정할 경우 다음과 같이 처리된다.
 		1) A 계정으로 로그인 -> 새션생성
@@ -40,23 +55,21 @@
 		세션타임아웃이 0이라면 절대 로그인할 수 없게 된다...
 		-->
 		<b:entry key="exceptionIfMaximumExceeded" value="false"/>
-		<b:entry key="decisionUrl" value="/member/decision"/>
-		<b:entry key="decisionParameterName" value="decision"/>
-
 	</util:map>
 
 	<http pattern="/favicon.ico" security="none" />
 	<http pattern="/resources/**" security="none" />
-	<http pattern="/404" security="none" />
+	<http pattern="/member/error/**" security="none" />
 	<http pattern="/hello" security="none" />
 
 	<http auto-config="false" use-expressions="true" create-session="always" entry-point-ref="authenticationEntryPoint">
-		<intercept-url pattern="/member/login" access="permitAll" />
-		<intercept-url pattern="/member/decision" access="permitAll" />
+		<intercept-url pattern="/member/login/**" access="permitAll" />
+		<intercept-url pattern="/member/visitor" access="hasAnyRole('ROLE_ADMIN')" />
 		<intercept-url pattern="/**" access="hasAnyRole('ROLE_USER')" />
 
+		<access-denied-handler ref="accessDeniedHandler" />
+
 		<custom-filter ref="concurrentSessionFilter" position="CONCURRENT_SESSION_FILTER" />
-		<custom-filter ref="concurrentSessionDecisionFilter" before="FORM_LOGIN_FILTER" />
 		<custom-filter ref="usernamePasswordAuthenticationFilter" position="FORM_LOGIN_FILTER" />
 		<custom-filter ref="logoutFilter" position="LOGOUT_FILTER" />
 
@@ -73,27 +86,24 @@
 	--> <!-- ajax 구현을 위한 커스텀 헨들러 적용 -->
 	<b:bean id="authenticationEntryPoint" class="org.syaku.spring.security.handler.UnauthorizedAccessHandler">
 		<b:constructor-arg name="loginFormUrl" value="#{config.loginFormUrl}" />
-		<b:property name="chain" value="#{config.chain}" />
+		<b:property name="redirect" value="#{config.redirect}" />
 	</b:bean>
 
-
 	<!-- ajax 구현을 위한 커스텀 헨들러 적용 -->
-	<b:bean id="requestCache" class="org.springframework.security.web.savedrequest.HttpSessionRequestCache"/>
 	<b:bean id="loginSuccessHandler" class="org.syaku.spring.security.handler.SignInSuccessHandler">
 		<b:property name="alwaysUseDefaultTargetUrl" value="#{config.alwaysUseDefaultTargetUrl}" />
 		<b:property name="defaultTargetUrl" value="#{config.defaultTargetUrl}" />
-		<b:property name="chain" value="#{config.chain}" />
-		<b:property name="requestCache" ref="requestCache" />
+		<b:property name="redirect" value="#{config.redirect}" />
 	</b:bean>
 
 	<b:bean id="loginFailureHandler" class="org.syaku.spring.security.handler.SignInFailureHandler">
-		<b:constructor-arg name="defaultFailureUrl" value="#{config.errorPage}" />
-		<b:property name="chain" value="#{config.chain}" />
+		<b:constructor-arg name="defaultFailureUrl" value="#{config.loginFailureUrl}" />
+		<b:property name="redirect" value="#{config.redirect}" />
 	</b:bean>
-	<b:bean id="accessFailureHandler" class="org.syaku.spring.security.handler.AccessFailureHandler">
-		<b:constructor-arg name="errorPage" value="#{config.errorPage}" />
+	<b:bean id="accessDeniedHandler" class="org.syaku.spring.security.handler.AccessFailureHandler">
+		<b:constructor-arg name="errorPage" value="#{config.accessDeniedUrl}" />
 		<b:constructor-arg name="loginFormUrl" value="#{config.loginFormUrl}" />
-		<b:property name="chain" value="#{config.chain}" />
+		<b:property name="redirect" value="#{config.accessDeniedRedirect}" />
 	</b:bean>
 	<!-- ajax 구현을 위한 커스텀 헨들러 적용 -->
 
@@ -112,13 +122,7 @@
 
 	<!-- 스프링 시큐리티에서 기본으로 사용하는 중복로그인 체크 필터 -->
 	<b:bean id="concurrentSessionFilter" class="org.springframework.security.web.session.ConcurrentSessionFilter">
-		<b:constructor-arg name="expiredUrl" value="#{config.expiredUrl}" />
-		<b:constructor-arg name="sessionRegistry" ref="sessionRegistry" />
-	</b:bean>
-
-	<b:bean id="concurrentSessionDecisionFilter" class="org.syaku.spring.security.handler.ConcurrentSessionDecisionFilter">
-		<b:constructor-arg name="decisionUrl" value="#{config.decisionUrl}" />
-		<b:constructor-arg name="loginProcessingUrl" value="#{config.loginProcessingUrl}" />
+		<b:constructor-arg name="expiredUrl" value="#{config.sessionExpiredUrl}" />
 		<b:constructor-arg name="sessionRegistry" ref="sessionRegistry" />
 	</b:bean>
 
@@ -126,19 +130,19 @@
 	<b:bean id="sas" class="org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy">
 		<b:constructor-arg>
 			<b:list>
-<!-- -->
-				<b:bean class="org.syaku.spring.security.handler.ConcurrentSessionControlAuthenticationHandler">
-					<b:constructor-arg ref="sessionRegistry"/>
-					<b:property name="maximumSessions" value="#{config.maximumSessions}" />
-					<b:property name="exceptionIfMaximumExceeded" value="#{config.exceptionIfMaximumExceeded}" />
-					<b:property name="decisionParameterName" value="#{config.decisionParameterName}" />
-					<b:property name="decisionUrl" value="#{config.decisionUrl}" />
-				</b:bean>
 
+				<!-- 스프링 시큐리티에서 기본으로 사용하는 동시세션전략
 				<b:bean class="org.springframework.security.web.authentication.session.ConcurrentSessionControlAuthenticationStrategy">
 					<b:constructor-arg ref="sessionRegistry"/>
 					<b:property name="maximumSessions" value="#{config.maximumSessions}" />
 					<b:property name="exceptionIfMaximumExceeded" value="#{config.exceptionIfMaximumExceeded}" />
+				</b:bean>
+				-->
+				<b:bean class="org.syaku.spring.security.session.ConcurrentSessionControlAuthenticationStrategySupport">
+					<b:constructor-arg ref="sessionRegistry" />
+					<b:constructor-arg value="#{config.maximumSessions}" />
+					<b:constructor-arg value="#{config.exceptionIfMaximumExceeded}" />
+					<b:property name="duplicationLoginEnable" value="#{config.duplicationLoginEnable}" />
 				</b:bean>
 
 				<b:bean class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy" />
@@ -185,6 +189,7 @@
 			<user-service id="userDetailsService">
 				<user name="user" password="1234" authorities="ROLE_USER"/>
 				<user name="test" password="1234" authorities="ROLE_USER"/>
+				<user name="admin" password="1234" authorities="ROLE_USER, ROLE_ADMIN"/>
 			</user-service>
 		</authentication-provider>
 	</authentication-manager>
