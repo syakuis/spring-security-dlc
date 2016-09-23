@@ -25,13 +25,16 @@
 				<i class="fa fa-5x fa-ban"></i>
 			</div>
 			<div class="col-xs-10">
-				<h4>[ 오류발생 ]</h4>
-				<p>HTTP 404 Error</p>
+				<h4>[ 알림 ]</h4>
+				<p>이미 로그인한 사용자가 있습니다. 기존 사용자를 로그아웃하시겠습니까?</p>
 			</div>
 		</div>
 
+		<hr>
+
 		<div class="text-center">
-			<a class="btn btn-default" href="<c:url value="/member/login" />" role="button">로그인</a>
+			<a class="btn btn-default" href="<c:url value="/member/login" />" role="button">예</a>
+			<a class="btn btn-default" href="<c:url value="/member/login" />" role="button">아니오</a>
 		</div>
 	</div>
 </div>

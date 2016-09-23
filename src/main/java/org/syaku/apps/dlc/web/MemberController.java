@@ -41,6 +41,12 @@ public class MemberController {
 		return "member/mypage";
 	}
 
+	@RequestMapping(value = "/decision", method = RequestMethod.POST)
+	public String dispMemberDecision(Model model, @RequestBody Map< String, Object> data) {
+		System.out.println(data.toString());
+		return "member/decision";
+	}
+
 	@RequestMapping(value = "/visitor", method = RequestMethod.GET)
 	public String dispMemberVisitor(Model model) {
 		List<SessionInformation> activeSessions = new ArrayList<>();

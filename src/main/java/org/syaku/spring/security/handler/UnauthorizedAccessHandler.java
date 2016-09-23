@@ -49,7 +49,7 @@ public class UnauthorizedAccessHandler implements AuthenticationEntryPoint {
 			out.flush();
 			out.close();
 		} else {
-
+			chain= false;
 			if (chain) {
 				request.getRequestDispatcher(request.getContextPath() + loginFormUrl).forward(request, response);
 			} else {

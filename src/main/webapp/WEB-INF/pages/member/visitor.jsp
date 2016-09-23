@@ -48,7 +48,7 @@
 
   <div class="text-center">
     <a class="btn btn-default" href="<c:url value="/member/mypage" />" role="button">마이페이지</a>
-    <a class="btn btn-default" href="<c:url value="/member/logout" />" role="button">로그아웃</a>
+    <a class="btn btn-default" href="<c:url value="/member/signout" />" role="button">로그아웃</a>
   </div>
 
 </div>

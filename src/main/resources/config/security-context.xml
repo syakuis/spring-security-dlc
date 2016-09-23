@@ -6,7 +6,7 @@
 						http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
 	<util:map id="config" key-type="java.lang.String" value-type="java.lang.Object">
-		<!-- 체인(포워드) 방식의 화면 요청 여부 -->
+		<!-- authenticationEntryPoint 의 체인(포워드) 방식의 화면 요청 여부 -->
 		<b:entry key="chain" value="true"/>
 		<b:entry key="loginFormUrl" value="/member/login"/>
 		<b:entry key="errorPage" value="/404"/>
@@ -27,9 +27,21 @@
 		<b:entry key="expiredUrl" value="/404"/>
 
 		<!-- 중복로그인 설정 -->
+		<!--
+		세션을 생성할 수 있는 수 -1 무제한으로 생성할 수 있으며 1로 설정할 경우 다음과 같이 처리된다.
+		1) A 계정으로 로그인 -> 새션생성
+		2) 다른 컴퓨터에서 A 계정으로 로그인 -> 새션생성 후 1번 세션은 제거된다. 즉 1번에서 로그인된 사용자는 로그아웃 처리된다.
+		-->
 		<b:entry key="maximumSessions" value="1"/>
+		<!--
+		설정된 세션 수를 넘지 못하게 할 수 있다. maximumSessions = 1 이고 true로 설정한 경우 다음과 같이 처리된다.
+		기존에 로그인 사용자가 있는 경우 더이상 같은 계정으로 로그인할 수 없게 된다. 기존에 로그인 사용자가 로그아웃하거나 세션이 파기되면 로그인할 수 있다.
+		만약 로그아웃하지 않고 브라우저들 닫을 경우(그외 문제로 세션을 잊어벼릴 경우) 로그아웃으로 처리되지 않기 때문에 세션이 파기될때까지 다른 사용자는 로그인 할 수 없다.
+		세션타임아웃이 0이라면 절대 로그인할 수 없게 된다...
+		-->
 		<b:entry key="exceptionIfMaximumExceeded" value="false"/>
-		<b:entry key="decisionUrl" value=""/>
+		<b:entry key="decisionUrl" value="/member/decision"/>
+		<b:entry key="decisionParameterName" value="decision"/>
 
 	</util:map>
 
@@ -40,11 +52,11 @@
 
 	<http auto-config="false" use-expressions="true" create-session="always" entry-point-ref="authenticationEntryPoint">
 		<intercept-url pattern="/member/login" access="permitAll" />
+		<intercept-url pattern="/member/decision" access="permitAll" />
 		<intercept-url pattern="/**" access="hasAnyRole('ROLE_USER')" />
 
-		<!-- 중복로그인 여부를 판단하기 위한 필터 -->
-		<custom-filter ref="concurrentSessionDecisionFilter" position="CONCURRENT_SESSION_FILTER" />
-		<custom-filter ref="concurrentSessionFilter" after="CONCURRENT_SESSION_FILTER" />
+		<custom-filter ref="concurrentSessionFilter" position="CONCURRENT_SESSION_FILTER" />
+		<custom-filter ref="concurrentSessionDecisionFilter" before="FORM_LOGIN_FILTER" />
 		<custom-filter ref="usernamePasswordAuthenticationFilter" position="FORM_LOGIN_FILTER" />
 		<custom-filter ref="logoutFilter" position="LOGOUT_FILTER" />
 
@@ -52,7 +64,7 @@
 		<csrf disabled="true"/>
 	</http>
 
-
+	<b:bean id="sessionRegistry" class="org.springframework.security.core.session.SessionRegistryImpl" />
 
 	<!-- 스프링 시큐리티에서 기본적으로 사용되는 authenticationEntryPoint 구현 클래스
 	<b:bean id="authenticationEntryPoint" class="org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint">
@@ -74,10 +86,14 @@
 		<b:property name="requestCache" ref="requestCache" />
 	</b:bean>
 
-	<b:bean id="loginFailureHandler" class="org.syaku.spring.security.handler.SignInFailureHandler" />
+	<b:bean id="loginFailureHandler" class="org.syaku.spring.security.handler.SignInFailureHandler">
+		<b:constructor-arg name="defaultFailureUrl" value="#{config.errorPage}" />
+		<b:property name="chain" value="#{config.chain}" />
+	</b:bean>
 	<b:bean id="accessFailureHandler" class="org.syaku.spring.security.handler.AccessFailureHandler">
 		<b:constructor-arg name="errorPage" value="#{config.errorPage}" />
 		<b:constructor-arg name="loginFormUrl" value="#{config.loginFormUrl}" />
+		<b:property name="chain" value="#{config.chain}" />
 	</b:bean>
 	<!-- ajax 구현을 위한 커스텀 헨들러 적용 -->
 
@@ -100,34 +116,29 @@
 		<b:constructor-arg name="sessionRegistry" ref="sessionRegistry" />
 	</b:bean>
 
-	<!-- 중복로그인 여부를 판단하기 위한 필터 -->
 	<b:bean id="concurrentSessionDecisionFilter" class="org.syaku.spring.security.handler.ConcurrentSessionDecisionFilter">
+		<b:constructor-arg name="decisionUrl" value="#{config.decisionUrl}" />
+		<b:constructor-arg name="loginProcessingUrl" value="#{config.loginProcessingUrl}" />
 		<b:constructor-arg name="sessionRegistry" ref="sessionRegistry" />
-		<b:constructor-arg name="decisionUrl" value="#{config.decisionUrl}" /><!-- ajax 아닌 경우 필요 -->
 	</b:bean>
 
-
 	<!-- SESSION MANAGEMENT -->
-	<b:bean id="sessionRegistry" class="org.springframework.security.core.session.SessionRegistryImpl" />
 	<b:bean id="sas" class="org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy">
 		<b:constructor-arg>
 			<b:list>
+<!-- -->
+				<b:bean class="org.syaku.spring.security.handler.ConcurrentSessionControlAuthenticationHandler">
+					<b:constructor-arg ref="sessionRegistry"/>
+					<b:property name="maximumSessions" value="#{config.maximumSessions}" />
+					<b:property name="exceptionIfMaximumExceeded" value="#{config.exceptionIfMaximumExceeded}" />
+					<b:property name="decisionParameterName" value="#{config.decisionParameterName}" />
+					<b:property name="decisionUrl" value="#{config.decisionUrl}" />
+				</b:bean>
 
 				<b:bean class="org.springframework.security.web.authentication.session.ConcurrentSessionControlAuthenticationStrategy">
 					<b:constructor-arg ref="sessionRegistry"/>
-					<!--
-					세션을 생성할 수 있는 수 -1 무제한으로 생성할 수 있으며 1로 설정할 경우 다음과 같이 처리된다.
-					1) A 계정으로 로그인 -> 새션생성
-					2) 다른 컴퓨터에서 A 계정으로 로그인 -> 새션생성 후 1번 세션은 제거된다. 즉 1번에서 로그인된 사용자는 로그아웃 처리된다.
-					-->
-					<b:property name="maximumSessions" value="1" />
-					<!--
-					설정된 세션 수를 넘지 못하게 할 수 있다. maximumSessions = 1 이고 true로 설정한 경우 다음과 같이 처리된다.
-					기존에 로그인 사용자가 있는 경우 더이상 같은 계정으로 로그인할 수 없게 된다. 기존에 로그인 사용자가 로그아웃하거나 세션이 파기되면 로그인할 수 있다.
-					만약 로그아웃하지 않고 브라우저들 닫을 경우(그외 문제로 세션을 잊어벼릴 경우) 로그아웃으로 처리되지 않기 때문에 세션이 파기될때까지 다른 사용자는 로그인 할 수 없다.
-					세션타임아웃이 0이라면 절대 로그인할 수 없게 된다...
-					-->
-					<b:property name="exceptionIfMaximumExceeded" value="false" />
+					<b:property name="maximumSessions" value="#{config.maximumSessions}" />
+					<b:property name="exceptionIfMaximumExceeded" value="#{config.exceptionIfMaximumExceeded}" />
 				</b:bean>
 
 				<b:bean class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy" />

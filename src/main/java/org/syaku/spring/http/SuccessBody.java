@@ -11,6 +11,7 @@ public class SuccessBody {
 	private boolean error = false;
 	private Object data;
 	private StatusCode statusCode = StatusCode.OK;
+	private int code = StatusCode.OK.ordinal();
 
 	public SuccessBody() {
 	}
@@ -68,13 +69,7 @@ public class SuccessBody {
 		this.statusCode = statusCode;
 	}
 
-	@Override
-	public String toString() {
-		return "SuccessBody{" +
-				"message='" + message + '\'' +
-				", error=" + error +
-				", data=" + data +
-				", statusCode=" + statusCode +
-				'}';
+	public int getCode() {
+		return statusCode.value();
 	}
 }

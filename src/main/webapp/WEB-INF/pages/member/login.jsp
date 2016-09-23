@@ -62,8 +62,8 @@
 
       <!-- 로그인 -->
       <div>
-        <form class="form-signin" role="form" id="login">
-          <input type="hidden" name="ignore" id="ignore">
+        <form class="form-signin" role="form" id="login" method="POST" action="<c:url value="/member/signin" />">
+          <input type="hidden" name="decision" id="decision">
           <h2 class="form-signin-heading"><i class="fa fa-sign-in"></i> 로그인</h2>
           <input type="text" class="form-control" placeholder="아이디" id="user_id" name="user_id" required>
           <input type="password" class="form-control" placeholder="비밀번호" id="password" name="password" required>
@@ -72,7 +72,8 @@
               <input type="checkbox" name="remember_me"> Remember me
             </label>
           </div>
-          <button class="btn btn-lg btn-primary btn-block" type="submit">로그인</button>
+          <button class="btn btn-lg btn-primary btn-block" type="submit">일반 로그인</button>
+          <button class="btn btn-lg btn-primary btn-block" type="button" onclick="ajax();">Ajax 로그인</button>
         </form>
       </div>
 
@@ -83,9 +84,8 @@
 </div>
 
 <script type="text/javascript">
-  $('#login').submit(function(event) {
-    event.preventDefault();
 
+  function ajax() {
     $.ajax({
       url : '<c:url value="/member/signin" />',
       data: $('#login input').serialize(),
@@ -97,13 +97,13 @@
     }).done(function(responseData) {
 
       var error = responseData.error;
-      var statusCode = responseData.statusCode;
+      var code = responseData.code;
 
       if (error) {
 
-        if (statusCode === 403) {
+        if (code === 403) {
           if (confirm("이미 로그인 사용자가 있습니다. 중복로그인 하시겠습니까?")) {
-            $('#ignore').val(true);
+            $('#decision').val(true);
             $('#login').submit();
           }
         } else {
@@ -124,7 +124,7 @@
 
       }
     });
-  });
+  }
 </script>
 
 </body>
