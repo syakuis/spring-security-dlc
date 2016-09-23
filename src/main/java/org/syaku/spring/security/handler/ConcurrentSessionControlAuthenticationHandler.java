@@ -11,6 +11,7 @@ import org.syaku.spring.http.StatusCode;
 import org.syaku.spring.http.SuccessBody;
 import org.syaku.spring.security.exception.ConcurrentSessionException;
 
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -70,6 +71,21 @@ public class ConcurrentSessionControlAuthenticationHandler extends ConcurrentSes
 		System.out.println(" 요청됨  ,,, 됨 ====>>>>>>>>>>>>>>>>>>>>" + authentication.getPrincipal());
 
 		int allowedSessions = getMaximumSessionsForThisUser(authentication);
+
+		if (concurrentSessionDecision(sessions, allowedSessions, request)) {
+			try {
+				RequestDispatcher dispatcher = request.getRequestDispatcher(request.getContextPath() + decisionUrl);
+				dispatcher.forward(request, response);
+				return;
+			} catch (IOException e) {
+				throw new RuntimeException(e.getMessage(), e);
+			} catch (ServletException e) {
+				throw new RuntimeException(e.getMessage(), e);
+			}
+		}
+
+		//allowableSessionsExceeded(sessions, allowedSessions, sessionRegistry);
+
 		/*String ignore = request.getParameter(decisionParameterName);
 		boolean isIgnore = Boolean.getBoolean(ignore);
 

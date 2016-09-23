@@ -2,9 +2,12 @@ package org.syaku.spring.security.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.security.core.session.SessionInformation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.session.SessionRegistry;
-import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.filter.GenericFilterBean;
 import org.syaku.snack.HttpSnack;
@@ -13,18 +16,11 @@ import org.syaku.spring.http.StatusCode;
 import org.syaku.spring.http.SuccessBody;
 import org.syaku.spring.security.session.SessionInformationSupport;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
+import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author Seok Kyun. Choi. 최석균 (Syaku)
@@ -32,6 +28,9 @@ import java.util.Map;
  * @since 2016. 9. 22.
  */
 public class ConcurrentSessionDecisionFilter extends GenericFilterBean {
+
+	@Autowired
+	private UserDetailsService userDetailsService;
 
 	private final SessionRegistry sessionRegistry;
 	private final String decisionUrl;
@@ -69,6 +68,12 @@ public class ConcurrentSessionDecisionFilter extends GenericFilterBean {
 		}
 
 		String username = request.getParameter("user_id");
+		String password = request.getParameter("password");
+
+		UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+		System.out.println(userDetails);
+		System.out.println(userDetails.getPassword().equals(password));
 
 		SessionInformationSupport sessionInformationSupport = new SessionInformationSupport(sessionRegistry);
 
@@ -100,8 +105,12 @@ public class ConcurrentSessionDecisionFilter extends GenericFilterBean {
 			} else {
 				System.out.println("http ====>>>>>>>>>>>>>>>>>>>>" + getServletContext());
 				if (this.chain) {
-					System.out.println("http ====>>>>>>>>>>>>>>>>>>>>chain" + getServletContext());
-					getServletContext().getRequestDispatcher(request.getContextPath() + decisionUrl).forward(request, response);
+					System.out.println("http ====>>>>>>>>>>>>>>>>>>>>chain" + request.getContextPath() + decisionUrl);
+
+					RequestDispatcher dispatcher = request.getRequestDispatcher(request.getContextPath() + decisionUrl);
+					dispatcher.forward(request, response);
+
+					//request.getRequestDispatcher(request.getContextPath() + decisionUrl).forward(request, response);
 					//chain.doFilter(req, res);
 					System.out.println("http ====>>>>>>>>>>>>>>>>>>>>chain2");
 				} else {
