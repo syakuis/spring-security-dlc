@@ -15,6 +15,8 @@ import org.syaku.spring.http.StatusCode;
 import org.syaku.spring.http.SuccessBody;
 import org.syaku.spring.security.session.SessionInformationSupport;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,9 +40,14 @@ public class MemberController {
 	String usernameParameter;
 	@Value("#{config.passwordParameter}")
 	String passwordParameter;
+	@Value("#{config.rememberMeparameter}")
+	String rememberMeparameter;
 
 	@RequestMapping(value = "/login", method = RequestMethod.GET)
-	public String dispMemberLogin() {
+	public String dispMemberLogin(Model model) {
+		model.addAttribute("usernameParameter", usernameParameter);
+		model.addAttribute("passwordParameter", passwordParameter);
+		model.addAttribute("rememberMeparameter", rememberMeparameter);
 		return "member/login";
 	}
 
@@ -60,7 +67,11 @@ public class MemberController {
 	}
 
 	@RequestMapping(value = "/visitor", method = RequestMethod.DELETE)
-	public @ResponseBody Map<String, Object> procMemberVisitorDelete(@RequestBody Map< String, Object> data) {
+	public @ResponseBody Map<String, Object> procMemberVisitorDelete(
+			@RequestBody Map< String, Object> data,
+			HttpServletRequest request,
+			HttpServletResponse response) {
+
 		SessionInformation session = sessionRegistry.getSessionInformation((String) data.get("sessionId"));
 		if (session != null) {
 			session.expireNow();

@@ -63,13 +63,12 @@
       <!-- 로그인 -->
       <div>
         <form class="form-signin" role="form" id="login" method="POST" action="<c:url value="/member/signin" />">
-          <input type="hidden" name="decision" id="decision">
           <h2 class="form-signin-heading"><i class="fa fa-sign-in"></i> 로그인</h2>
-          <input type="text" class="form-control" placeholder="아이디" id="user_id" name="user_id" required>
-          <input type="password" class="form-control" placeholder="비밀번호" id="password" name="password" required>
+          <input type="text" class="form-control" placeholder="아이디" id="user_id" name="${usernameParameter}" required>
+          <input type="password" class="form-control" placeholder="비밀번호" id="password" name="${passwordParameter}" required>
           <div class="checkbox">
             <label>
-              <input type="checkbox" name="remember_me"> Remember me
+              <input type="checkbox" name="${rememberMeparameter}"> 로그인 상태 유지
             </label>
           </div>
           <button class="btn btn-lg btn-primary btn-block" type="button" onclick="duplication(true);">일반 로그인</button>

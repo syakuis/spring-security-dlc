@@ -55,6 +55,14 @@
 		세션타임아웃이 0이라면 절대 로그인할 수 없게 된다...
 		-->
 		<b:entry key="exceptionIfMaximumExceeded" value="false"/>
+
+		<!-- RememberMe -->
+		<b:entry key="rememberMekey" value="dlc"/>
+		<b:entry key="rememberMecookieName" value="remember-me"/>
+		<b:entry key="rememberMeparameter" value="remember_me"/>
+		<b:entry key="rememberMetokenValiditySeconds" value="#{60 * 60 * 24 * 31}"/> <!-- 한달 -->
+
+
 	</util:map>
 
 	<http pattern="/favicon.ico" security="none" />
@@ -62,7 +70,7 @@
 	<http pattern="/member/error/**" security="none" />
 	<http pattern="/hello" security="none" />
 
-	<http auto-config="false" use-expressions="true" create-session="always" entry-point-ref="authenticationEntryPoint">
+	<http auto-config="false" use-expressions="true" entry-point-ref="authenticationEntryPoint" create-session="always">
 		<intercept-url pattern="/member/login/**" access="permitAll" />
 		<intercept-url pattern="/member/visitor" access="hasAnyRole('ROLE_ADMIN')" />
 		<intercept-url pattern="/**" access="hasAnyRole('ROLE_USER')" />
@@ -72,10 +80,31 @@
 		<custom-filter ref="concurrentSessionFilter" position="CONCURRENT_SESSION_FILTER" />
 		<custom-filter ref="usernamePasswordAuthenticationFilter" position="FORM_LOGIN_FILTER" />
 		<custom-filter ref="logoutFilter" position="LOGOUT_FILTER" />
+		<custom-filter ref="rememberMeFilter" position="REMEMBER_ME_FILTER" />
 
-		<session-management session-authentication-strategy-ref="sas"/>
+		<session-management session-authentication-strategy-ref="sas" />
 		<csrf disabled="true"/>
 	</http>
+
+	<!-- remember me 사용을 위한 설정 -->
+	<b:bean id="rememberMeFilter" class="org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter">
+		<b:constructor-arg name="authenticationManager" ref="authenticationManager" />
+		<b:constructor-arg name="rememberMeServices" ref="rememberMeServices"/>
+		<b:property name="authenticationSuccessHandler" ref="loginSuccessHandler" />
+	</b:bean>
+
+	<b:bean id="rememberMeServices" class="org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices">
+		<b:constructor-arg name="key" value="#{config.rememberMekey}"/>
+		<b:constructor-arg name="userDetailsService" ref="userDetailsService"/>
+		<b:property name="cookieName" value="#{config.rememberMecookieName}" />
+		<b:property name="parameter" value="#{config.rememberMeparameter}" />
+		<b:property name="tokenValiditySeconds" value="#{config.rememberMetokenValiditySeconds}" />
+	</b:bean>
+
+	<b:bean id="rememberMeAuthenticationProvider" class="org.springframework.security.authentication.RememberMeAuthenticationProvider">
+		<b:constructor-arg name="key" value="#{config.rememberMekey}"/>
+	</b:bean>
+	<!-- remember me 사용을 위한 설정 -->
 
 	<b:bean id="sessionRegistry" class="org.springframework.security.core.session.SessionRegistryImpl" />
 
@@ -108,8 +137,6 @@
 	<!-- ajax 구현을 위한 커스텀 헨들러 적용 -->
 
 	<b:bean id="usernamePasswordAuthenticationFilter" class="org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter">
-		<b:property name="authenticationManager" ref="authenticationManager" />
-		<b:property name="sessionAuthenticationStrategy" ref="sas" />
 		<b:property name="usernameParameter" value="#{config.usernameParameter}" />
 		<b:property name="passwordParameter" value="#{config.passwordParameter}" />
 		<b:property name="filterProcessesUrl" value="#{config.loginProcessingUrl}" />
@@ -117,13 +144,63 @@
 		<!-- ajax 구현을 위한 커스텀 헨들러 적용 -->
 		<b:property name="authenticationFailureHandler" ref="loginFailureHandler" />
 		<b:property name="authenticationSuccessHandler" ref="loginSuccessHandler" />
+
+		<b:property name="authenticationManager" ref="authenticationManager" />
+		<b:property name="sessionAuthenticationStrategy" ref="sas" />
+		<!-- remember-me -->
+		<b:property name="rememberMeServices" ref="rememberMeServices" />
 	</b:bean>
 
+	<!-- 스프링 시큐리티에서 기본으로 사용하는 로그아웃 헨틀러
+	<b:bean id="logoutSuccessHandler" class="org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler" />
+ 	-->
+	<b:bean id="logoutSuccessHandler" class="org.syaku.spring.security.handler.SignOutSuccessHandler">
+		<b:property name="alwaysUseDefaultTargetUrl" value="#{config.alwaysUseDefaultTargetUrl}" />
+		<b:property name="defaultTargetUrl" value="#{config.defaultTargetUrl}" />
+	</b:bean>
+
+	<!--
+	로그아웃 필터 설정
+
+	커스텀필터를 사용하기 위해 쿠키제거 설정을 직접해햐한다. -->
+	<b:bean id="securityContextLogoutHandler" class="org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler">
+		<b:property name="clearAuthentication" value="true" /><!-- 기본값 생략가능 -->
+		<b:property name="invalidateHttpSession" value="true" /><!-- 기본값 생략가능 -->
+	</b:bean>
+
+	<b:bean id="cookieClearingLogoutHandler" class="org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler">
+		<b:constructor-arg name="cookiesToClear">
+			<b:array>
+				<b:value>#{config.cookiesToClear}</b:value>
+				<b:value>#{config.rememberMecookieName}</b:value>
+			</b:array>
+		</b:constructor-arg>
+	</b:bean>
+
+	<b:bean id="logoutFilter" class="org.springframework.security.web.authentication.logout.LogoutFilter">
+		<b:constructor-arg name="logoutSuccessHandler" ref="logoutSuccessHandler" />
+		<b:constructor-arg name="handlers">
+			<b:list>
+				<b:ref bean="rememberMeServices" />
+				<b:ref bean="securityContextLogoutHandler" />
+				<b:ref bean="cookieClearingLogoutHandler"/>
+			</b:list>
+		</b:constructor-arg>
+		<b:property name="filterProcessesUrl" value="#{config.logoutProcessingUrl}"/>
+	</b:bean>
+	<!-- 로그아웃 필터 설정 -->
 
 	<!-- 스프링 시큐리티에서 기본으로 사용하는 중복로그인 체크 필터 -->
 	<b:bean id="concurrentSessionFilter" class="org.springframework.security.web.session.ConcurrentSessionFilter">
 		<b:constructor-arg name="expiredUrl" value="#{config.sessionExpiredUrl}" />
 		<b:constructor-arg name="sessionRegistry" ref="sessionRegistry" />
+		<b:property name="logoutHandlers">
+			<b:array>
+				<b:ref bean="rememberMeServices" />
+				<b:ref bean="securityContextLogoutHandler" />
+				<b:ref bean="cookieClearingLogoutHandler"/>
+			</b:array>
+		</b:property>
 	</b:bean>
 
 	<!-- SESSION MANAGEMENT -->
@@ -139,16 +216,18 @@
 				</b:bean>
 				-->
 				<b:bean class="org.syaku.spring.security.session.ConcurrentSessionControlAuthenticationStrategySupport">
-					<b:constructor-arg ref="sessionRegistry" />
-					<b:constructor-arg value="#{config.maximumSessions}" />
-					<b:constructor-arg value="#{config.exceptionIfMaximumExceeded}" />
+					<b:constructor-arg name="sessionRegistry" ref="sessionRegistry" />
+					<b:constructor-arg name="maximumSessions" value="#{config.maximumSessions}" />
+					<b:constructor-arg name="exceptionIfMaximumExceeded" value="#{config.exceptionIfMaximumExceeded}" />
 					<b:property name="duplicationLoginEnable" value="#{config.duplicationLoginEnable}" />
 				</b:bean>
 
-				<b:bean class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy" />
+				<b:bean class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy">
+					<b:property name="migrateSessionAttributes" value="false" />
+				</b:bean>
 
 				<b:bean class="org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy">
-					<b:constructor-arg ref="sessionRegistry"/>
+					<b:constructor-arg name="sessionRegistry" ref="sessionRegistry"/>
 				</b:bean>
 
 			</b:list>
@@ -156,35 +235,8 @@
 	</b:bean>
 	<!-- SESSION MANAGEMENT -->
 
-	<!-- 스프링 시큐리티에서 기본으로 사용하는 로그아웃 헨틀러
-	<b:bean id="logoutSuccessHandler" class="org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler" />
- 	-->
-	<b:bean id="logoutSuccessHandler" class="org.syaku.spring.security.handler.SignOutSuccessHandler">
-		<b:property name="alwaysUseDefaultTargetUrl" value="#{config.alwaysUseDefaultTargetUrl}" />
-		<b:property name="defaultTargetUrl" value="#{config.defaultTargetUrl}" />
-	</b:bean>
-
-	<!--
-	로그아웃 필터 설정
-
-	커스텀필터를 사용하기 위해 쿠키제거 설정을 직접해햐한다. -->
-	<b:bean id="cookieClearingLogoutHandler" class="org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler">
-		<b:constructor-arg value="#{config.cookiesToClear}" />
-	</b:bean>
-	<b:bean id="logoutFilter" class="org.springframework.security.web.authentication.logout.LogoutFilter">
-		<b:constructor-arg name="logoutSuccessHandler" ref="logoutSuccessHandler" />
-		<b:constructor-arg name="handlers">
-			<b:list>
-				<b:bean id="securityContextLogoutHandler" class="org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler" />
-				<b:ref bean="cookieClearingLogoutHandler"/>
-				<!-- 로그아웃 후 필요한 헨들러를 추가할 수 있다 -->
-			</b:list>
-		</b:constructor-arg>
-		<b:property name="filterProcessesUrl" value="#{config.logoutProcessingUrl}"/>
-	</b:bean>
-	<!-- 로그아웃 필터 설정 -->
-
 	<authentication-manager alias="authenticationManager">
+		<authentication-provider ref="rememberMeAuthenticationProvider" />
 		<authentication-provider>
 			<user-service id="userDetailsService">
 				<user name="user" password="1234" authorities="ROLE_USER"/>
