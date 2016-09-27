@@ -40,14 +40,14 @@
 		중복로그인 사용여부
 		사용할 경우 maximumSessions = 1, exceptionIfMaximumExceeded = false 설정으로 셋팅됩니다.
 		-->
-		<b:entry key="duplicationLoginEnable" value="true" />
+		<b:entry key="duplicationLoginDisable" value="true" />
 
 		<!--
 		세션을 생성할 수 있는 수 -1 무제한으로 생성할 수 있으며 1로 설정할 경우 다음과 같이 처리된다.
 		1) A 계정으로 로그인 -> 새션생성
 		2) 다른 컴퓨터에서 A 계정으로 로그인 -> 새션생성 후 1번 세션은 제거된다. 즉 1번에서 로그인된 사용자는 로그아웃 처리된다.
 		-->
-		<b:entry key="maximumSessions" value="1"/>
+		<b:entry key="maximumSessions" value="-1"/>
 		<!--
 		설정된 세션 수를 넘지 못하게 할 수 있다. maximumSessions = 1 이고 true로 설정한 경우 다음과 같이 처리된다.
 		기존에 로그인 사용자가 있는 경우 더이상 같은 계정으로 로그인할 수 없게 된다. 기존에 로그인 사용자가 로그아웃하거나 세션이 파기되면 로그인할 수 있다.
@@ -70,7 +70,7 @@
 	<http pattern="/member/error/**" security="none" />
 	<http pattern="/hello" security="none" />
 
-	<http auto-config="false" use-expressions="true" entry-point-ref="authenticationEntryPoint" create-session="always">
+	<http auto-config="false" use-expressions="true" entry-point-ref="authenticationEntryPoint">
 		<intercept-url pattern="/member/login/**" access="permitAll" />
 		<intercept-url pattern="/member/visitor" access="hasAnyRole('ROLE_ADMIN')" />
 		<intercept-url pattern="/**" access="hasAnyRole('ROLE_USER')" />
@@ -87,10 +87,11 @@
 	</http>
 
 	<!-- remember me 사용을 위한 설정 -->
-	<b:bean id="rememberMeFilter" class="org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter">
+	<b:bean id="rememberMeFilter" class="org.syaku.spring.security.filter.RememberMeConcurrentSessionFilter">
 		<b:constructor-arg name="authenticationManager" ref="authenticationManager" />
 		<b:constructor-arg name="rememberMeServices" ref="rememberMeServices"/>
 		<b:property name="authenticationSuccessHandler" ref="loginSuccessHandler" />
+		<b:property name="sessionAuthenticationStrategy" ref="sas" />
 	</b:bean>
 
 	<b:bean id="rememberMeServices" class="org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices">
@@ -127,7 +128,6 @@
 
 	<b:bean id="loginFailureHandler" class="org.syaku.spring.security.handler.SignInFailureHandler">
 		<b:constructor-arg name="defaultFailureUrl" value="#{config.loginFailureUrl}" />
-		<b:property name="redirect" value="#{config.redirect}" />
 	</b:bean>
 	<b:bean id="accessDeniedHandler" class="org.syaku.spring.security.handler.AccessFailureHandler">
 		<b:constructor-arg name="errorPage" value="#{config.accessDeniedUrl}" />
@@ -219,7 +219,7 @@
 					<b:constructor-arg name="sessionRegistry" ref="sessionRegistry" />
 					<b:constructor-arg name="maximumSessions" value="#{config.maximumSessions}" />
 					<b:constructor-arg name="exceptionIfMaximumExceeded" value="#{config.exceptionIfMaximumExceeded}" />
-					<b:property name="duplicationLoginEnable" value="#{config.duplicationLoginEnable}" />
+					<b:property name="duplicationLoginDisable" value="#{config.duplicationLoginDisable}" />
 				</b:bean>
 
 				<b:bean class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy">

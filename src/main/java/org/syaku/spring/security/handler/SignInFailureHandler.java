@@ -18,21 +18,12 @@ import java.io.PrintWriter;
  * @site http://syaku.tistory.com
  * @since 16. 5. 30.
  *
- * @ConcurrentSessionException 중복록인을 요청한 경우
  */
 public class SignInFailureHandler extends SimpleUrlAuthenticationFailureHandler {
-	private boolean redirect = true;
-	private String defaultFailureUrl;
-
 	public SignInFailureHandler() {}
 
 	public SignInFailureHandler(String defaultFailureUrl) {
 		super(defaultFailureUrl);
-		this.defaultFailureUrl = defaultFailureUrl;
-	}
-
-	public void setRedirect(boolean redirect) {
-		this.redirect = redirect;
 	}
 
 	@Override
@@ -54,11 +45,7 @@ public class SignInFailureHandler extends SimpleUrlAuthenticationFailureHandler 
 			out.flush();
 			out.close();
 		} else {
-			if (redirect) {
-				super.onAuthenticationFailure(request, response, exception);
-			} else {
-				request.getRequestDispatcher(request.getContextPath() + defaultFailureUrl).forward(request, response);
-			}
+			super.onAuthenticationFailure(request, response, exception);
 		}
 	}
 }
