@@ -11,7 +11,7 @@ Spring security 4.1.0.RELEASE
 
 ### DEMO
 
-![IMAGE ALT TEXT HERE](https://youtu.be/RUlTVo8hbUo)
+[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/RUlTVo8hbUo/0.jpg)](https://youtu.be/RUlTVo8hbUo)
 
 ### Keyword
 
